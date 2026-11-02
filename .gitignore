@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+.DS_Store
+
+# Local development database
+*.db
+.coverage
+htmlcov/
+*.log
+
+# Deployment backups and local runtime artifacts
+backups/
+*.dump
+*.log

@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: codeguard
+      POSTGRES_USER: codeguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-db-password}
+    volumes:
+      - codeguard_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codeguard -d codeguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  codeguard:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://codeguard:${POSTGRES_PASSWORD:-change-this-db-password}@db:5432/codeguard
+      ENVIRONMENT: production
+      ENABLE_HSTS: "true"
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-localhost,127.0.0.1}
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-8}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  codeguard_pgdata:

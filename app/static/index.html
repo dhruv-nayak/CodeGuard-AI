@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CodeGuard AI — AI-assisted code review, repository intelligence and DevSecOps insights.">
+  <meta name="theme-color" content="#0b1020">
+  <title>CodeGuard AI — Developer Security Workspace</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="topbar">
+    <div class="brand"><span class="mark">CG</span><span>CodeGuard <b>AI</b></span></div>
+    <nav class="topnav" aria-label="Main navigation"><a href="#workspace">Code review</a><a href="#repositoryIntelligencePanel">Repository scan</a><a href="#securityIntelligencePanel">Security</a><a href="/docs" target="_blank" rel="noopener noreferrer">API docs ↗</a></nav>
+  </header>
+  <main class="container" id="main">
+    <section class="auth-panel panel">
+      <div class="panel-head"><div>YOUR WORKSPACE</div><span id="authState">Sign in to save review history</span></div>
+      <div class="auth-grid">
+        <div><label for="authName">Full name (for registration)</label><input id="authName" placeholder="Your name"></div>
+        <div><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="username" placeholder="you@example.com"></div>
+        <div><label for="authPassword">Password (minimum 12 characters)</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••••••"></div>
+      </div>
+      <div class="auth-actions">
+        <button id="loginBtn" onclick="login()">Sign in</button>
+        <button id="registerBtn" class="secondary-btn" onclick="register()">Create account</button>
+        <button id="logoutBtn" class="secondary-btn" onclick="logout()" hidden>Sign out</button>
+        <button id="historyBtn" class="secondary-btn" onclick="loadHistory()" hidden>Refresh history</button>
+      </div>
+      <div id="authMessage" class="github-status" aria-live="polite"></div>
+      <div id="historyList" class="history-list"></div>
+      <div class="repository-manager">
+        <div class="panel-head"><div>REGISTERED REPOSITORIES</div><span>Personal repository list</span></div>
+        <div class="repository-form">
+          <input id="repoOwner" placeholder="GitHub owner">
+          <input id="repoName" placeholder="Repository name">
+          <input id="repoBranch" placeholder="Default branch" value="main">
+          <button class="secondary-btn" onclick="addRepository()">Add repository</button>
+        </div>
+        <div id="repositoryList" class="history-list"></div>
+        <div class="panel-head"><div>SHARED WITH MY TEAMS</div></div>
+        <div id="sharedRepositoryList" class="history-list"></div>
+      </div>
+      <div id="adminPanel" class="repository-manager" hidden>
+        <div class="panel-head"><div>ADMINISTRATION</div><span>User, team and audit management</span></div>
+        <div class="repository-form">
+          <input id="newTeamName" placeholder="Team name">
+          <input id="newTeamDescription" placeholder="Team description">
+          <button class="secondary-btn" onclick="createTeam()">Create team</button>
+        </div>
+        <div class="repository-form">
+          <input id="teamIdInput" type="number" min="1" placeholder="Team ID">
+          <input id="teamMemberEmail" type="email" placeholder="Registered member email">
+          <button class="secondary-btn" onclick="addTeamMember()">Add member</button>
+        </div>
+        <div class="repository-form">
+          <input id="shareTeamId" type="number" min="1" placeholder="Team ID">
+          <input id="shareRepositoryId" type="number" min="1" placeholder="Your repository ID">
+          <button class="secondary-btn" onclick="shareRepository()">Share repository</button>
+        </div>
+        <div id="adminUsers" class="history-list"></div>
+        <div id="adminTeams" class="history-list"></div>
+        <div id="adminAudit" class="history-list"></div>
+      </div>
+    </section>
+    <section class="hero">
+      <div class="eyebrow">DEVELOPER QUALITY WORKSPACE · v0.8.0</div>
+      <h1>Write better code.<br><span>Ship with confidence.</span></h1>
+      <p>Review code, inspect repository dependencies, track security findings and generate audit-ready reports — in one developer workspace.</p>
+      <div class="hero-pills"><span>Multi-language review</span><span>GitHub integration</span><span>Dependency intelligence</span><span>Remediation tracking</span></div>
+    </section>
+    <section class="workspace" id="workspace" aria-label="Code review workspace">
+      <div class="panel editor-panel">
+        <div class="panel-head"><div><span class="dot"></span> CODE INPUT</div><span>Python · .py</span></div>
+        <label for="filename">File name</label>
+        <input id="filename" value="example.py">
+        <label for="provider">AI provider</label>
+        <select id="provider">
+          <option value="auto">Automatic fallback (OpenAI → Gemini → Ollama)</option>
+          <option value="openai">OpenAI</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="ollama">Local Ollama</option>
+        </select>
+        <label for="language">Language</label>
+        <select id="language" onchange="updateFilenameHint()">
+          <option value="python">Python</option><option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option><option value="java">Java</option>
+          <option value="php">PHP</option><option value="sql">SQL</option><option value="html">HTML</option>
+        </select>
+        <label for="code">Source code</label>
+        <textarea id="code" spellcheck="false">def calculate_average(values):
+    total = sum(values)
+    return total / len(values)
+
+def get_user_role(user):
+    try:
+        return user["role"]
+    except:
+        return "guest"
+</textarea>
+        <div class="editor-foot">
+          <span>Up to 50,000 characters · Code is not executed</span>
+          <button id="reviewBtn" onclick="runReview()">Review code <span>→</span></button>
+        </div>
+      </div>
+      <div class="panel results-panel">
+        <div class="panel-head"><div>REVIEW RESULTS</div><span id="status">Waiting for code</span></div>
+        <div id="empty" class="empty">
+          <div class="empty-icon">⌘</div>
+          <h3>Your review will appear here</h3>
+          <p>Submit code in a supported language to see its quality score, findings and test suggestions.</p>
+        </div>
+        <div id="results" hidden>
+          <div class="score-row"><div><small>QUALITY SCORE</small><div class="score" id="score">—<small>/100</small></div></div><div class="ai-state" id="aiState">Static analysis</div></div>
+          <h3 id="summaryTitle">Summary</h3><p id="summary" class="summary"></p>
+          <h3>Findings <span class="count" id="findingCount">0</span></h3>
+          <div id="findings"></div>
+          <section id="aiDetails" hidden>
+            <h3>AI review findings</h3><div id="aiFindings"></div>
+            <h3>Suggested code improvement</h3><pre id="improvedCode"></pre>
+            <h3>Generated test module / examples</h3><pre id="generatedTests"></pre>
+          </section>
+          <h3>Suggested test scenarios</h3><ul id="tests"></ul>
+          <details><summary>Analysis limitations</summary><ul id="limits"></ul></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="analyticsPanel">
+      <div class="panel-head"><div>REVIEW ANALYTICS</div><button class="secondary-btn" onclick="loadAnalytics()">Refresh analytics</button></div>
+      <p id="analyticsSummary">Sign in to see aggregate insights from your saved reviews.</p>
+      <div id="analyticsDetails" class="analytics-grid"></div>
+    </section>
+
+    <section class="panel" id="securityIntelligencePanel">
+      <div class="panel-head"><div>ENTERPRISE SECURITY INTELLIGENCE</div><button class="secondary-btn" onclick="loadSecurityIntelligence()">Refresh security</button></div>
+      <p id="securitySummary">Sign in to view repository risk, remediation status and security alerts.</p>
+      <div id="securityMetrics" class="analytics-grid"></div>
+      <div class="repository-form">
+        <button class="secondary-btn" onclick="downloadSecurityReport('pdf')">PDF report</button>
+        <button class="secondary-btn" onclick="downloadSecurityReport('xlsx')">Excel report</button>
+        <button class="secondary-btn" onclick="downloadSecurityReport('csv')">CSV report</button>
+      </div>
+      <div class="repository-form"><input id="securityTeamId" type="number" min="1" placeholder="Team ID for team dashboard"><button class="secondary-btn" onclick="loadTeamSecurityDashboard()">Load team dashboard</button></div>
+      <div id="teamSecuritySummary" class="history-list"></div>
+      <h3>Finding remediation</h3><div id="remediationList" class="history-list"></div>
+      <h3>High-priority alerts</h3><div id="securityAlerts" class="history-list"></div>
+      <h3>Scheduled scan configuration</h3>
+      <p class="github-note">Schedules are configuration records. An external scheduler/runner must execute scans and provide credentials at run time; CodeGuard does not retain GitHub tokens.</p>
+      <div class="repository-form"><input id="scheduleRepositoryId" type="number" min="1" placeholder="Registered repository ID"><select id="scheduleCadence"><option value="weekly">Weekly</option><option value="daily">Daily</option></select><button class="secondary-btn" onclick="createSecuritySchedule()">Save schedule</button></div>
+      <div id="securitySchedules" class="history-list"></div>
+    </section>
+
+    <section class="github-panel panel">
+      <div class="panel-head"><div>GITHUB PULL REQUEST REVIEW</div><span>Review first · publish only with approval</span></div>
+      <div class="github-form">
+        <p class="github-note">Review supported source files from a pull request (Python PR files are currently analysed). Use a fine-grained token or a configured GitHub App installation ID. Credentials are used for this request only and are never stored.</p>
+        <div class="github-grid">
+          <div><label for="ghOwner">Owner</label><input id="ghOwner" placeholder="octocat"></div>
+          <div><label for="ghRepo">Repository</label><input id="ghRepo" placeholder="hello-world"></div>
+          <div><label for="ghPr">Pull request #</label><input id="ghPr" type="number" min="1" placeholder="42"></div>
+        </div>
+        <div class="github-grid">
+          <div><label for="ghToken">GitHub token (optional with App)</label><input id="ghToken" type="password" autocomplete="off" placeholder="github_pat_..." /></div>
+          <div><label for="ghInstallation">GitHub App installation ID (optional)</label><input id="ghInstallation" type="number" min="1" placeholder="12345678" /></div>
+        </div>
+        <div class="github-actions">
+          <label for="ghProvider">AI provider</label>
+          <select id="ghProvider">
+            <option value="auto">Automatic fallback</option><option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option><option value="ollama">Ollama</option>
+          </select>
+          <button id="ghReviewBtn" onclick="reviewPullRequest()">Review pull request →</button>
+        </div>
+        <div id="ghStatus" class="github-status" aria-live="polite"></div>
+        <div id="ghResults" hidden></div>
+        <div id="ghPublishPanel" hidden class="publish-panel">
+          <p>Review the proposed GitHub comments before publishing. Publishing creates a COMMENT review only; it never approves or requests changes.</p>
+          <button class="secondary-btn" onclick="previewGitHubComments()">Preview comment drafts</button>
+          <div id="ghCommentDraft"></div>
+          <label for="ghPublishConfirm">Type PUBLISH_COMMENTS to confirm publication</label>
+          <input id="ghPublishConfirm" placeholder="PUBLISH_COMMENTS">
+          <button id="ghPublishBtn" onclick="publishGitHubComments()">Publish comments to GitHub</button>
+        </div>
+      </div>
+    </section>
+    <section class="panel github-panel" id="repositoryIntelligencePanel">
+      <div class="panel-head"><div>REPOSITORY INTELLIGENCE &amp; DEVSECOPS</div><span>Read-only · No repository code is executed</span></div>
+      <div class="github-form">
+        <p class="github-note">Scan a GitHub repository for heuristic source-code risks, exact-version dependency advisories from OSV, and a downloadable CycloneDX SBOM. Requires repository Contents: read permission. Private source remains subject to your organisation's policies.</p>
+        <div class="github-grid">
+          <div><label for="scanOwner">Owner</label><input id="scanOwner" placeholder="octocat"></div>
+          <div><label for="scanRepo">Repository</label><input id="scanRepo" placeholder="hello-world"></div>
+          <div><label for="scanToken">GitHub token (optional with App)</label><input id="scanToken" type="password" autocomplete="off" placeholder="github_pat_..."></div>
+        </div>
+        <div class="github-grid">
+          <div><label for="scanInstallation">GitHub App installation ID (optional)</label><input id="scanInstallation" type="number" min="1" placeholder="12345678"></div>
+        </div>
+        <div class="github-actions"><button id="scanRepoBtn" onclick="scanRepository()">Scan repository →</button></div>
+        <div id="repoScanStatus" class="github-status" aria-live="polite"></div>
+        <div id="repoScanResults" hidden></div>
+      </div>
+    </section>
+    <footer><strong>CodeGuard AI</strong> · Portfolio project · Static analysis is advisory, not a security certification. Do not submit confidential source code or live credentials.</footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
