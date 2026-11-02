@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CodeGuard AI v0.8.0
 
 AI-assisted multi-language code review and test-suggestion platform built with FastAPI. Phase 6 adds production-readiness foundations: Alembic migrations, revocable sessions, request throttling, security headers, readiness checks and a hardened container image. The existing GitHub App, PR comment workflow, teams, admin tools and audit trail remain part of the project.
@@ -264,3 +265,7 @@ make smoke
 ```
 
 On Windows, use the equivalent Python commands in PowerShell. PostgreSQL backup/restore helpers are available as `scripts/backup_postgres.ps1` and `scripts/restore_postgres.ps1 -BackupFile <path>`.
+=======
+# CodeGuard-AI
+AI-powered multi-language code review and security analysis platform built with FastAPI, Python, PostgreSQL and GitHub integration
+>>>>>>> 32ceaea460e36273d51f8bdba6b5c095c9fb8cb1
