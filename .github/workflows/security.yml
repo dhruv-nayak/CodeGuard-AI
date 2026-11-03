@@ -43,6 +43,10 @@ jobs:
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/python -m pip install -r requirements.txt
 
+      - name: Upgrade vulnerable setuptools
+        if: steps.python-check.outputs.available == 'true'
+        run: |
+          .venv/bin/python -m pip install --upgrade "setuptools>=84.1.0"
       - name: Install security tools
         if: steps.python-check.outputs.available == 'true'
         run: |
@@ -64,6 +68,7 @@ jobs:
             --output-format JSON \
             --output-file sbom-python.cdx.json
 
+            
       - name: Upload Python security artifacts
         if: always() && steps.python-check.outputs.available == 'true'
         uses: actions/upload-artifact@v4
