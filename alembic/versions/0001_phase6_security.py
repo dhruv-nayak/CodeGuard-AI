@@ -3,9 +3,11 @@
 Revision ID: 0001_phase6_security
 Revises:
 """
-from alembic import op
+
 import sqlalchemy as sa
 from sqlalchemy import inspect
+
+from alembic import op
 
 revision = "0001_phase6_security"
 down_revision = None
@@ -43,7 +45,9 @@ def upgrade():
             sa.Column("id", sa.Integer(), primary_key=True),
             sa.Column("review_id", sa.String(64), nullable=False, unique=True),
             sa.Column(
-                "user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"),
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
                 nullable=False,
             ),
             sa.Column("review_type", sa.String(30), nullable=False),
@@ -62,7 +66,9 @@ def upgrade():
             "repositories",
             sa.Column("id", sa.Integer(), primary_key=True),
             sa.Column(
-                "user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"),
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
                 nullable=False,
             ),
             sa.Column("owner", sa.String(100), nullable=False),
@@ -88,11 +94,15 @@ def upgrade():
             "team_members",
             sa.Column("id", sa.Integer(), primary_key=True),
             sa.Column(
-                "team_id", sa.Integer(), sa.ForeignKey("teams.id", ondelete="CASCADE"),
+                "team_id",
+                sa.Integer(),
+                sa.ForeignKey("teams.id", ondelete="CASCADE"),
                 nullable=False,
             ),
             sa.Column(
-                "user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"),
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
                 nullable=False,
             ),
             sa.Column("member_role", sa.String(30), nullable=False),
@@ -107,12 +117,16 @@ def upgrade():
             "team_repositories",
             sa.Column("id", sa.Integer(), primary_key=True),
             sa.Column(
-                "team_id", sa.Integer(), sa.ForeignKey("teams.id", ondelete="CASCADE"),
+                "team_id",
+                sa.Integer(),
+                sa.ForeignKey("teams.id", ondelete="CASCADE"),
                 nullable=False,
             ),
             sa.Column(
-                "repository_id", sa.Integer(),
-                sa.ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False,
+                "repository_id",
+                sa.Integer(),
+                sa.ForeignKey("repositories.id", ondelete="CASCADE"),
+                nullable=False,
             ),
             sa.Column("added_at", sa.DateTime(timezone=True), nullable=False),
             sa.UniqueConstraint("team_id", "repository_id", name="uq_team_repository"),
@@ -127,7 +141,9 @@ def upgrade():
             "audit_logs",
             sa.Column("id", sa.Integer(), primary_key=True),
             sa.Column(
-                "user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL"),
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("users.id", ondelete="SET NULL"),
                 nullable=True,
             ),
             sa.Column("action", sa.String(100), nullable=False),

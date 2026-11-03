@@ -1,12 +1,13 @@
 import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 from app.db.database import Base
 from app.models import AuditLog, Review, Team, TeamMember, TeamRepository, User  # noqa: F401
-from app.models.repository import Repository  # noqa: F401
 from app.models.remediation import FindingRemediation, RepositorySchedule  # noqa: F401
+from app.models.repository import Repository  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
@@ -42,6 +43,7 @@ def run_migrations_online():
         )
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()
