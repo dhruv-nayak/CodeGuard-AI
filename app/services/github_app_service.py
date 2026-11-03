@@ -1,8 +1,8 @@
 import os
 import time
+
 import httpx
 import jwt
-
 
 GITHUB_API = "https://api.github.com"
 
@@ -11,7 +11,9 @@ def _app_credentials() -> tuple[str, str]:
     app_id = os.getenv("GITHUB_APP_ID", "").strip()
     private_key = os.getenv("GITHUB_APP_PRIVATE_KEY", "").replace("\\n", "\n")
     if not app_id or not private_key:
-        raise ValueError("GitHub App is not configured. Set GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY.")
+        raise ValueError(
+            "GitHub App is not configured. Set GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY."
+        )
     return app_id, private_key
 
 
@@ -40,7 +42,9 @@ async def create_installation_token(installation_id: int) -> dict:
             },
         )
     if response.status_code in (401, 403):
-        raise ValueError("GitHub App authentication failed. Verify the App ID, private key and installation.")
+        raise ValueError(
+            "GitHub App authentication failed. Verify the App ID, private key and installation."
+        )
     if response.status_code == 404:
         raise ValueError("GitHub App installation was not found or is not accessible.")
     response.raise_for_status()
@@ -51,4 +55,6 @@ async def create_installation_token(installation_id: int) -> dict:
 
 
 def github_app_configured() -> bool:
-    return bool(os.getenv("GITHUB_APP_ID", "").strip() and os.getenv("GITHUB_APP_PRIVATE_KEY", "").strip())
+    return bool(
+        os.getenv("GITHUB_APP_ID", "").strip() and os.getenv("GITHUB_APP_PRIVATE_KEY", "").strip()
+    )

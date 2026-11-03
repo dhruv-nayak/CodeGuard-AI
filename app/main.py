@@ -73,6 +73,7 @@ async def readiness():
         return {"status": "ready", "database": "ok"}
     except Exception:
         from fastapi.responses import JSONResponse
+
         return JSONResponse({"status": "not_ready", "database": "unavailable"}, status_code=503)
 
 

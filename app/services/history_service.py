@@ -1,12 +1,18 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from app.models.review import Review
 from app.models.user import User
 
 
 def save_review(
-    db: Session, user: User, review_id: str, result: dict,
-    review_type: str = "code", filename: str = "", repository: str = "",
+    db: Session,
+    user: User,
+    review_id: str,
+    result: dict,
+    review_type: str = "code",
+    filename: str = "",
+    repository: str = "",
 ) -> Review:
     row = Review(
         review_id=review_id,
@@ -15,7 +21,9 @@ def save_review(
         filename=filename,
         repository=repository,
         score=result.get("score"),
-        summary=result.get("summary") or result.get("ai_summary") or "GitHub pull request review completed.",
+        summary=result.get("summary")
+        or result.get("ai_summary")
+        or "GitHub pull request review completed.",
         result_json=result,
     )
     db.add(row)
@@ -25,7 +33,12 @@ def save_review(
 
 
 def list_reviews(db: Session, user: User, limit: int = 50) -> list[Review]:
-    query = select(Review).where(Review.user_id == user.id).order_by(Review.created_at.desc()).limit(limit)
+    query = (
+        select(Review)
+        .where(Review.user_id == user.id)
+        .order_by(Review.created_at.desc())
+        .limit(limit)
+    )
     return list(db.scalars(query))
 
 

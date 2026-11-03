@@ -1,4 +1,5 @@
 import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -26,9 +27,11 @@ def get_db():
 
 
 def init_db():
-    from alembic import command
-    from alembic.config import Config
     from pathlib import Path
+
+    from alembic.config import Config
+
+    from alembic import command
 
     config = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
     command.upgrade(config, "head")

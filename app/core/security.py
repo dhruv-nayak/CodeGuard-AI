@@ -1,8 +1,9 @@
 import os
 from datetime import datetime, timedelta, timezone
+
 import jwt
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, VerificationError
+from argon2.exceptions import VerificationError, VerifyMismatchError
 
 _password_hasher = PasswordHasher()
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-only-change-this-secret-before-deployment")
@@ -25,8 +26,11 @@ def create_access_token(user_id: int, role: str, token_version: int = 0) -> str:
     expires = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_MINUTES)
     return jwt.encode(
         {
-            "sub": str(user_id), "role": role, "ver": token_version,
-            "iat": datetime.now(timezone.utc), "exp": expires,
+            "sub": str(user_id),
+            "role": role,
+            "ver": token_version,
+            "iat": datetime.now(timezone.utc),
+            "exp": expires,
         },
         JWT_SECRET,
         algorithm=JWT_ALGORITHM,

@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+
 class GitHubReviewRequest(BaseModel):
     owner: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9-]+$")
     repo: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$")
@@ -23,6 +24,7 @@ class GitHubFileFinding(BaseModel):
     additions: int
     deletions: int
     findings: list[dict]
+
 
 class GitHubReviewResponse(BaseModel):
     review_id: str | None = None

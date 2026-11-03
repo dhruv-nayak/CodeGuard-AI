@@ -4,13 +4,14 @@ from urllib.parse import quote
 
 import httpx
 
-from app.services.analyzer import analyze_python
 from app.services.ai_providers import get_hybrid_review
+from app.services.analyzer import analyze_python
 
 GITHUB_API = "https://api.github.com"
 MAX_FILES = 30
 MAX_FILE_BYTES = 250_000
 PYTHON_EXTENSIONS = (".py",)
+
 
 def changed_line_numbers(patch: str | None) -> set[int]:
     """Return new-file line numbers represented by added lines in a unified diff."""
@@ -36,7 +37,10 @@ def changed_line_numbers(patch: str | None) -> set[int]:
             new_line += 1
     return changed
 
-async def _github_get(client: httpx.AsyncClient, url: str, token: str, accept: str = "application/vnd.github+json"):
+
+async def _github_get(
+    client: httpx.AsyncClient, url: str, token: str, accept: str = "application/vnd.github+json"
+):
     response = await client.get(
         url,
         headers={
@@ -54,7 +58,10 @@ async def _github_get(client: httpx.AsyncClient, url: str, token: str, accept: s
     response.raise_for_status()
     return response
 
-async def review_pull_request(owner: str, repo: str, pull_number: int, token: str, ai_provider: str = "auto") -> dict:
+
+async def review_pull_request(
+    owner: str, repo: str, pull_number: int, token: str, ai_provider: str = "auto"
+) -> dict:
     if not token.strip():
         raise ValueError("A GitHub token is required.")
 
@@ -92,7 +99,9 @@ async def review_pull_request(owner: str, repo: str, pull_number: int, token: st
                 continue
 
             # Fetch exact file content at PR head; never execute repository code.
-            contents_url = f"{base}/contents/{quote(filename, safe='/')}?ref={quote(head_sha, safe='')}"
+            contents_url = (
+                f"{base}/contents/{quote(filename, safe='/')}?ref={quote(head_sha, safe='')}"
+            )
             try:
                 content_response = await _github_get(client, contents_url, token)
                 content_obj = content_response.json()
@@ -117,24 +126,30 @@ async def review_pull_request(owner: str, repo: str, pull_number: int, token: st
             serialised = [f.model_dump() for f in findings]
             total_findings += len(serialised)
 
-            results.append({
-                "filename": filename,
-                "status": status,
-                "additions": item.get("additions", 0),
-                "deletions": item.get("deletions", 0),
-                "findings": serialised,
-            })
+            results.append(
+                {
+                    "filename": filename,
+                    "status": status,
+                    "additions": item.get("additions", 0),
+                    "deletions": item.get("deletions", 0),
+                    "findings": serialised,
+                }
+            )
 
             # One optional AI review per file, bounded to avoid excessive API usage.
             if len(ai_summaries) < 5 and source.strip():
-                ai_data, provider, _errors = await get_hybrid_review(filename, source[:50000], ai_provider)
+                ai_data, provider, _errors = await get_hybrid_review(
+                    filename, source[:50000], ai_provider
+                )
                 if ai_data:
-                    ai_summaries.append({
-                        "file": filename,
-                        "provider": provider,
-                        "summary": str(ai_data.get("summary", ""))[:1200],
-                        "findings": ai_data.get("findings", [])[:10],
-                    })
+                    ai_summaries.append(
+                        {
+                            "file": filename,
+                            "provider": provider,
+                            "summary": str(ai_data.get("summary", ""))[:1200],
+                            "findings": ai_data.get("findings", [])[:10],
+                        }
+                    )
 
     return {
         "repository": f"{owner}/{repo}",
@@ -148,14 +163,27 @@ async def review_pull_request(owner: str, repo: str, pull_number: int, token: st
         "file_results": results,
         "ai_summary": "\n\n".join(
             f"{x['file']} ({x['provider']}): {x['summary']}" for x in ai_summaries
-        ) or None,
+        )
+        or None,
         "ai_provider": ", ".join(sorted({x["provider"] for x in ai_summaries})) or None,
         "limitations": [
-            "This integration is read-only: it does not post comments, approve, merge or modify pull requests.",
-            "Only Python files are analysed in this version; removed, binary, oversized and unsupported files are skipped.",
+            (
+                "This integration is read-only: it does not post comments, approve, "
+                "merge or modify pull requests."
+            ),
+            (
+                "Only Python files are analysed in this version; removed, binary, "
+                "oversized and unsupported files are skipped."
+            ),
             "Repository source is fetched at the pull request head and is never executed.",
-            "Static findings are filtered to changed lines when GitHub provides a patch; files without patch data may not have changed-line filtering.",
-            "AI review is advisory and may send source code to the selected external provider. Use only repositories permitted by your organisation.",
+            (
+                "Static findings are filtered to changed lines when GitHub provides a patch; "
+                "files without patch data may not have changed-line filtering."
+            ),
+            (
+                "AI review is advisory and may send source code to the selected external "
+                "provider. Use only repositories permitted by your organisation."
+            ),
             "The GitHub token is used for this request only and is not stored by CodeGuard.",
         ],
     }

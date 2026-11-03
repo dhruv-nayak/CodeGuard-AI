@@ -35,11 +35,20 @@ def _team_payload(db: Session, team: Team) -> dict:
         "name": team.name,
         "description": team.description,
         "members": [
-            {"user_id": m.user_id, "email": m.user.email, "full_name": m.user.full_name, "role": m.member_role}
+            {
+                "user_id": m.user_id,
+                "email": m.user.email,
+                "full_name": m.user.full_name,
+                "role": m.member_role,
+            }
             for m in members
         ],
         "repositories": [
-            {"repository_id": link.repository_id, "owner": link.repository.owner, "name": link.repository.name}
+            {
+                "repository_id": link.repository_id,
+                "owner": link.repository.owner,
+                "name": link.repository.name,
+            }
             for link in repositories
         ],
         "created_at": team.created_at.isoformat(),
@@ -61,7 +70,9 @@ def create_team(
     existing = db.scalar(select(Team).where(Team.name == payload.name.strip()))
     if existing:
         raise HTTPException(status_code=409, detail="A team with this name already exists.")
-    team = Team(name=payload.name.strip(), description=payload.description.strip(), created_by=admin.id)
+    team = Team(
+        name=payload.name.strip(), description=payload.description.strip(), created_by=admin.id
+    )
     db.add(team)
     db.flush()
     db.add(TeamMember(team_id=team.id, user_id=admin.id, member_role="team_admin"))
@@ -83,15 +94,19 @@ def add_team_member(
         raise HTTPException(status_code=404, detail="Team not found.")
     user = db.scalar(select(User).where(User.email == payload.email.strip().lower()))
     if not user:
-        raise HTTPException(status_code=404, detail="User account not found. Ask the user to register first.")
-    existing = db.scalar(select(TeamMember).where(
-        TeamMember.team_id == team_id, TeamMember.user_id == user.id
-    ))
+        raise HTTPException(
+            status_code=404, detail="User account not found. Ask the user to register first."
+        )
+    existing = db.scalar(
+        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user.id)
+    )
     if existing:
         raise HTTPException(status_code=409, detail="User is already a member of this team.")
     db.add(TeamMember(team_id=team_id, user_id=user.id))
     db.commit()
-    record_audit(db, admin.id, "team.member_added", "team", str(team_id), {"member_user_id": user.id})
+    record_audit(
+        db, admin.id, "team.member_added", "team", str(team_id), {"member_user_id": user.id}
+    )
     return _team_payload(db, team)
 
 
@@ -102,14 +117,16 @@ def remove_team_member(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    membership = db.scalar(select(TeamMember).where(
-        TeamMember.team_id == team_id, TeamMember.user_id == user_id
-    ))
+    membership = db.scalar(
+        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
+    )
     if not membership:
         raise HTTPException(status_code=404, detail="Team membership not found.")
     db.delete(membership)
     db.commit()
-    record_audit(db, admin.id, "team.member_removed", "team", str(team_id), {"member_user_id": user_id})
+    record_audit(
+        db, admin.id, "team.member_removed", "team", str(team_id), {"member_user_id": user_id}
+    )
     return None
 
 
@@ -125,14 +142,18 @@ def share_repository_with_team(
     repo = db.get(Repository, payload.repository_id)
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found.")
-    existing = db.scalar(select(TeamRepository).where(
-        TeamRepository.team_id == team_id, TeamRepository.repository_id == repo.id
-    ))
+    existing = db.scalar(
+        select(TeamRepository).where(
+            TeamRepository.team_id == team_id, TeamRepository.repository_id == repo.id
+        )
+    )
     if existing:
         raise HTTPException(status_code=409, detail="Repository is already shared with this team.")
     db.add(TeamRepository(team_id=team_id, repository_id=repo.id))
     db.commit()
-    record_audit(db, admin.id, "team.repository_shared", "team", str(team_id), {"repository_id": repo.id})
+    record_audit(
+        db, admin.id, "team.repository_shared", "team", str(team_id), {"repository_id": repo.id}
+    )
     return {"status": "shared", "team_id": team_id, "repository_id": repo.id}
 
 
@@ -154,8 +175,13 @@ def shared_repositories(user: User = Depends(get_current_user), db: Session = De
     # Deduplicate repositories shared through multiple teams.
     unique = {row.id: row for row in rows}
     return [
-        {"id": row.id, "owner": row.owner, "name": row.name, "default_branch": row.default_branch,
-         "url": f"https://github.com/{row.owner}/{row.name}"}
+        {
+            "id": row.id,
+            "owner": row.owner,
+            "name": row.name,
+            "default_branch": row.default_branch,
+            "url": f"https://github.com/{row.owner}/{row.name}",
+        }
         for row in unique.values()
     ]
 
@@ -168,8 +194,14 @@ def admin_users(
 ):
     users = db.scalars(select(User).order_by(User.created_at.desc()).limit(limit)).all()
     return [
-        {"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role,
-         "is_active": u.is_active, "created_at": u.created_at.isoformat()}
+        {
+            "id": u.id,
+            "email": u.email,
+            "full_name": u.full_name,
+            "role": u.role,
+            "is_active": u.is_active,
+            "created_at": u.created_at.isoformat(),
+        }
         for u in users
     ]
 
@@ -187,7 +219,9 @@ def update_user_role(
     if not target:
         raise HTTPException(status_code=404, detail="User not found.")
     if target.id == admin.id and role != "admin":
-        raise HTTPException(status_code=400, detail="Administrators cannot remove their own admin role.")
+        raise HTTPException(
+            status_code=400, detail="Administrators cannot remove their own admin role."
+        )
     target.role = role
     db.commit()
     record_audit(db, admin.id, "user.role_updated", "user", str(user_id), {"role": role})
@@ -202,8 +236,14 @@ def audit_logs(
 ):
     rows = db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)).all()
     return [
-        {"id": row.id, "user_id": row.user_id, "action": row.action,
-         "resource_type": row.resource_type, "resource_id": row.resource_id,
-         "details": row.details, "created_at": row.created_at.isoformat()}
+        {
+            "id": row.id,
+            "user_id": row.user_id,
+            "action": row.action,
+            "resource_type": row.resource_type,
+            "resource_id": row.resource_id,
+            "details": row.details,
+            "created_at": row.created_at.isoformat(),
+        }
         for row in rows
     ]

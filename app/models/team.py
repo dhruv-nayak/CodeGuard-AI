@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
+
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.database import Base
 
 
@@ -14,7 +16,9 @@ class Team(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     members = relationship("TeamMember", back_populates="team", cascade="all, delete-orphan")
-    repositories = relationship("TeamRepository", back_populates="team", cascade="all, delete-orphan")
+    repositories = relationship(
+        "TeamRepository", back_populates="team", cascade="all, delete-orphan"
+    )
 
 
 class TeamMember(Base):
@@ -36,7 +40,9 @@ class TeamRepository(Base):
     __table_args__ = (UniqueConstraint("team_id", "repository_id", name="uq_team_repository"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"), index=True)
-    repository_id: Mapped[int] = mapped_column(ForeignKey("repositories.id", ondelete="CASCADE"), index=True)
+    repository_id: Mapped[int] = mapped_column(
+        ForeignKey("repositories.id", ondelete="CASCADE"), index=True
+    )
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

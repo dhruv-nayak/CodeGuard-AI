@@ -11,7 +11,7 @@ from app.db.database import get_db
 from app.models.repository import Repository
 from app.models.review import Review
 from app.models.user import User
-from app.schemas.auth import ReviewHistoryItem, RepositoryCreate, RepositoryResponse
+from app.schemas.auth import RepositoryCreate, RepositoryResponse, ReviewHistoryItem
 from app.schemas.github import GitHubReviewRequest, GitHubReviewResponse
 from app.schemas.review import ReviewRequest, ReviewResponse
 from app.services.audit_service import record_audit
@@ -37,11 +37,21 @@ async def create_review(
     try:
         result = await review_code(payload)
         save_review(
-            db, user, result.review_id, result.model_dump(mode="json"),
-            review_type="code", filename=result.filename,
+            db,
+            user,
+            result.review_id,
+            result.model_dump(mode="json"),
+            review_type="code",
+            filename=result.filename,
         )
-        record_audit(db, user.id, "code.review_created", "review", result.review_id,
-                     {"filename": result.filename})
+        record_audit(
+            db,
+            user.id,
+            "code.review_created",
+            "review",
+            result.review_id,
+            {"filename": result.filename},
+        )
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -59,18 +69,34 @@ async def review_github_pull_request(
             token_data = await create_installation_token(payload.installation_id)
             token = token_data["token"]
         result = await review_pull_request(
-            owner=payload.owner, repo=payload.repo, pull_number=payload.pull_number,
-            token=token, ai_provider=payload.ai_provider,
+            owner=payload.owner,
+            repo=payload.repo,
+            pull_number=payload.pull_number,
+            token=token,
+            ai_provider=payload.ai_provider,
         )
-        result_data = result.model_dump(mode="json") if hasattr(result, "model_dump") else dict(result)
+        result_data = (
+            result.model_dump(mode="json") if hasattr(result, "model_dump") else dict(result)
+        )
         review_id = str(uuid4())
         result_data["review_id"] = review_id
         save_review(
-            db, user, review_id, result_data, review_type="github_pr",
-            filename=f"PR #{result_data['pull_number']}", repository=result_data["repository"],
+            db,
+            user,
+            review_id,
+            result_data,
+            review_type="github_pr",
+            filename=f"PR #{result_data['pull_number']}",
+            repository=result_data["repository"],
         )
-        record_audit(db, user.id, "github.pull_request_reviewed", "review", review_id,
-                     {"repository": result_data["repository"], "pull_number": result_data["pull_number"]})
+        record_audit(
+            db,
+            user.id,
+            "github.pull_request_reviewed",
+            "review",
+            review_id,
+            {"repository": result_data["repository"], "pull_number": result_data["pull_number"]},
+        )
         return result_data
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -90,8 +116,12 @@ def review_history(
     rows = list_reviews(db, user, limit)
     return [
         ReviewHistoryItem(
-            review_id=row.review_id, review_type=row.review_type, filename=row.filename,
-            repository=row.repository, score=row.score, summary=row.summary,
+            review_id=row.review_id,
+            review_type=row.review_type,
+            filename=row.filename,
+            repository=row.repository,
+            score=row.score,
+            summary=row.summary,
             created_at=row.created_at.isoformat(),
         )
         for row in rows
@@ -113,11 +143,16 @@ def review_history_detail(
 @router.get("/repositories", response_model=list[RepositoryResponse])
 def repositories(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.scalars(
-        select(Repository).where(Repository.user_id == user.id).order_by(Repository.created_at.desc())
+        select(Repository)
+        .where(Repository.user_id == user.id)
+        .order_by(Repository.created_at.desc())
     )
     return [
         RepositoryResponse(
-            id=row.id, owner=row.owner, name=row.name, default_branch=row.default_branch,
+            id=row.id,
+            owner=row.owner,
+            name=row.name,
+            default_branch=row.default_branch,
             created_at=row.created_at.isoformat(),
             url=f"https://github.com/{row.owner}/{row.name}",
         )
@@ -132,11 +167,13 @@ def add_repository(
     db: Session = Depends(get_db),
 ):
     owner, name = payload.owner.strip(), payload.name.strip()
-    existing = db.scalar(select(Repository).where(
-        Repository.user_id == user.id,
-        Repository.owner == owner,
-        Repository.name == name,
-    ))
+    existing = db.scalar(
+        select(Repository).where(
+            Repository.user_id == user.id,
+            Repository.owner == owner,
+            Repository.name == name,
+        )
+    )
     if existing:
         raise HTTPException(status_code=409, detail="This repository is already registered.")
     row = Repository(
@@ -145,11 +182,16 @@ def add_repository(
     db.add(row)
     db.commit()
     db.refresh(row)
-    record_audit(db, user.id, "repository.created", "repository", str(row.id),
-                 {"owner": owner, "name": name})
+    record_audit(
+        db, user.id, "repository.created", "repository", str(row.id), {"owner": owner, "name": name}
+    )
     return RepositoryResponse(
-        id=row.id, owner=row.owner, name=row.name, default_branch=row.default_branch,
-        created_at=row.created_at.isoformat(), url=f"https://github.com/{row.owner}/{row.name}",
+        id=row.id,
+        owner=row.owner,
+        name=row.name,
+        default_branch=row.default_branch,
+        created_at=row.created_at.isoformat(),
+        url=f"https://github.com/{row.owner}/{row.name}",
     )
 
 
@@ -159,9 +201,9 @@ def remove_repository(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    row = db.scalar(select(Repository).where(
-        Repository.id == repository_id, Repository.user_id == user.id
-    ))
+    row = db.scalar(
+        select(Repository).where(Repository.id == repository_id, Repository.user_id == user.id)
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Repository not found.")
     db.delete(row)
@@ -182,15 +224,33 @@ def download_generated_tests(
     ai_review = (row.result_json or {}).get("ai_review") or {}
     tests = ai_review.get("generated_tests")
     if not tests or not tests.strip():
-        raise HTTPException(status_code=404, detail="No generated test module is available for this review.")
+        raise HTTPException(
+            status_code=404, detail="No generated test module is available for this review."
+        )
     base_name = re.sub(r"[^A-Za-z0-9_-]", "_", row.filename.rsplit(".", 1)[0]) or "review"
     language = str((row.result_json or {}).get("language", "python")).lower()
-    extension = {"python": "py", "javascript": "js", "typescript": "ts", "java": "java", "php": "php", "sql": "sql", "html": "html"}.get(language, "txt")
-    media_type = "text/plain" if extension in {"sql", "html"} else "text/x-python" if extension == "py" else "text/plain"
+    extension = {
+        "python": "py",
+        "javascript": "js",
+        "typescript": "ts",
+        "java": "java",
+        "php": "php",
+        "sql": "sql",
+        "html": "html",
+    }.get(language, "txt")
+    media_type = (
+        "text/plain"
+        if extension in {"sql", "html"}
+        else "text/x-python"
+        if extension == "py"
+        else "text/plain"
+    )
     return Response(
         content=tests,
         media_type=media_type,
-        headers={"Content-Disposition": f'attachment; filename="{base_name}_generated_tests.{extension}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{base_name}_generated_tests.{extension}"'
+        },
     )
 
 
@@ -239,7 +299,9 @@ def download_review_sbom(
     if not row:
         raise HTTPException(status_code=404, detail="Review not found.")
     if row.review_type != "repository_scan":
-        raise HTTPException(status_code=400, detail="This review does not contain a repository SBOM.")
+        raise HTTPException(
+            status_code=400, detail="This review does not contain a repository SBOM."
+        )
     sbom = (row.result_json or {}).get("sbom")
     if not isinstance(sbom, dict):
         raise HTTPException(status_code=404, detail="SBOM is not available for this scan.")

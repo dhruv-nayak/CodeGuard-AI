@@ -12,8 +12,12 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
     """Small single-process limiter; use a gateway/Redis limiter for multi-worker deployments."""
 
     def __init__(
-        self, app, requests_per_minute: int = 120, auth_requests_per_minute: int = 10,
-        max_body_bytes: int = 1_000_000, enable_hsts: bool = False,
+        self,
+        app,
+        requests_per_minute: int = 120,
+        auth_requests_per_minute: int = 10,
+        max_body_bytes: int = 1_000_000,
+        enable_hsts: bool = False,
     ):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute

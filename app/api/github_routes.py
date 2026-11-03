@@ -1,4 +1,6 @@
 from urllib.parse import quote
+from uuid import uuid4
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -11,7 +13,6 @@ from app.services.audit_service import record_audit
 from app.services.github_app_service import create_installation_token, github_app_configured
 from app.services.history_service import get_review, save_review
 from app.services.repository_intelligence import scan_github_repository
-from uuid import uuid4
 
 router = APIRouter(prefix="/github", tags=["GitHub integration"])
 GITHUB_API = "https://api.github.com"
@@ -28,8 +29,10 @@ async def _get_token(payload) -> str:
 def app_status(user: User = Depends(get_current_user)):
     return {
         "configured": github_app_configured(),
-        "authentication": "GitHub App installation tokens" if github_app_configured() else "Personal access token",
-        "note": "Installation tokens are short-lived and are not stored by CodeGuard."
+        "authentication": "GitHub App installation tokens"
+        if github_app_configured()
+        else "Personal access token",
+        "note": "Installation tokens are short-lived and are not stored by CodeGuard.",
     }
 
 
@@ -43,7 +46,9 @@ def draft_review_comments(
     if not row:
         raise HTTPException(status_code=404, detail="Review not found.")
     if row.review_type != "github_pr":
-        raise HTTPException(status_code=400, detail="This review is not a GitHub pull request review.")
+        raise HTTPException(
+            status_code=400, detail="This review is not a GitHub pull request review."
+        )
     result = row.result_json or {}
     comments = []
     for file_result in result.get("file_results", []):
@@ -56,7 +61,10 @@ def draft_review_comments(
             severity = str(finding.get("severity", "info"))[:20]
             message = str(finding.get("message", ""))[:1200]
             recommendation = str(finding.get("recommendation", ""))[:1200]
-            body = f"**{severity.upper()} – {title}**\n\n{message}\n\n**Recommendation:** {recommendation}"
+            body = (
+                f"**{severity.upper()} – {title}**\n\n{message}\n\n"
+                f"**Recommendation:** {recommendation}"
+            )
             comments.append({"path": path, "line": line, "side": "RIGHT", "body": body})
     return {
         "review_id": row.review_id,
@@ -66,7 +74,10 @@ def draft_review_comments(
         "comment_count": len(comments),
         "comments": comments,
         "publishing_requires_explicit_confirmation": "PUBLISH_COMMENTS",
-        "note": "Review comments are drafts. Confirm every comment before publishing. CodeGuard will publish a COMMENT review, never APPROVE or REQUEST_CHANGES."
+        "note": (
+            "Review comments are drafts. Confirm every comment before publishing. "
+            "CodeGuard will publish a COMMENT review, never APPROVE or REQUEST_CHANGES."
+        ),
     }
 
 
@@ -81,7 +92,9 @@ async def publish_review_comments(
     if not row:
         raise HTTPException(status_code=404, detail="Review not found.")
     if row.review_type != "github_pr":
-        raise HTTPException(status_code=400, detail="This review is not a GitHub pull request review.")
+        raise HTTPException(
+            status_code=400, detail="This review is not a GitHub pull request review."
+        )
     result = row.result_json or {}
     repository = result.get("repository", "")
     pull_number = result.get("pull_number")
@@ -100,20 +113,31 @@ async def publish_review_comments(
             severity = str(finding.get("severity", "info"))[:20]
             message = str(finding.get("message", ""))[:1200]
             recommendation = str(finding.get("recommendation", ""))[:1200]
-            body = f"**{severity.upper()} – {title}**\n\n{message}\n\n**Recommendation:** {recommendation}"
+            body = (
+                f"**{severity.upper()} – {title}**\n\n{message}\n\n"
+                f"**Recommendation:** {recommendation}"
+            )
             draft_comments.append({"path": path, "line": line, "side": "RIGHT", "body": body})
     if not draft_comments:
-        raise HTTPException(status_code=400, detail="There are no line-specific findings to publish.")
+        raise HTTPException(
+            status_code=400, detail="There are no line-specific findings to publish."
+        )
     try:
         token = await _get_token(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     owner, repo = repository.split("/", 1)
-    url = f"{GITHUB_API}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/pulls/{pull_number}/reviews"
+    url = (
+        f"{GITHUB_API}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}"
+        f"/pulls/{pull_number}/reviews"
+    )
     request_body = {
         "commit_id": head_sha,
-        "body": f"CodeGuard AI review – {len(draft_comments)} finding(s). Please review the suggestions before merging.",
+        "body": (
+            f"CodeGuard AI review – {len(draft_comments)} finding(s). "
+            "Please review the suggestions before merging."
+        ),
         "event": "COMMENT",
         "comments": draft_comments,
     }
@@ -128,24 +152,45 @@ async def publish_review_comments(
             json=request_body,
         )
     if response.status_code in (401, 403):
-        raise HTTPException(status_code=403, detail="GitHub rejected comment publishing. Check Pull requests: write permission.")
+        raise HTTPException(
+            status_code=403,
+            detail="GitHub rejected comment publishing. Check Pull requests: write permission.",
+        )
     if response.status_code == 404:
-        raise HTTPException(status_code=404, detail="GitHub pull request was not found or is not accessible.")
+        raise HTTPException(
+            status_code=404, detail="GitHub pull request was not found or is not accessible."
+        )
     if response.status_code == 422:
-        raise HTTPException(status_code=422, detail="GitHub could not place one or more comments on the current diff. Re-run the review against the latest pull request.")
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "GitHub could not place one or more comments on the current diff. "
+                "Re-run the review against the latest pull request."
+            ),
+        )
     response.raise_for_status()
     published = response.json()
     record_audit(
-        db, user.id, "github.review_comments_published", "review", review_id,
-        {"repository": repository, "pull_number": pull_number, "comment_count": len(draft_comments),
-         "github_review_id": published.get("id")},
+        db,
+        user.id,
+        "github.review_comments_published",
+        "review",
+        review_id,
+        {
+            "repository": repository,
+            "pull_number": pull_number,
+            "comment_count": len(draft_comments),
+            "github_review_id": published.get("id"),
+        },
     )
     return {
         "status": "published",
         "event": "COMMENT",
         "comment_count": len(draft_comments),
         "github_review_url": published.get("html_url"),
-        "message": "Comments published. CodeGuard did not approve or request changes on this pull request."
+        "message": (
+            "Comments published. CodeGuard did not approve or request changes on this pull request."
+        ),
     }
 
 
@@ -167,14 +212,30 @@ async def scan_repository(
             f"{result['dependency_count']} pinned dependencies."
         )
         save_review(
-            db, user, review_id, result, review_type="repository_scan",
-            filename=f"{payload.owner}/{payload.repo}", repository=f"{payload.owner}/{payload.repo}",
+            db,
+            user,
+            review_id,
+            result,
+            review_type="repository_scan",
+            filename=f"{payload.owner}/{payload.repo}",
+            repository=f"{payload.owner}/{payload.repo}",
         )
-        record_audit(db, user.id, "github.repository_scanned", "repository", f"{payload.owner}/{payload.repo}",
-                     {"review_id": review_id, "files_reviewed": result["files_reviewed"],
-                      "dependency_count": result["dependency_count"]})
+        record_audit(
+            db,
+            user.id,
+            "github.repository_scanned",
+            "repository",
+            f"{payload.owner}/{payload.repo}",
+            {
+                "review_id": review_id,
+                "files_reviewed": result["files_reviewed"],
+                "dependency_count": result["dependency_count"],
+            },
+        )
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Repository scan failed. Check GitHub access and retry.") from exc
+        raise HTTPException(
+            status_code=502, detail="Repository scan failed. Check GitHub access and retry."
+        ) from exc

@@ -21,11 +21,15 @@ Return ONLY valid JSON with this exact shape:
     }
   ],
   "improved_code": "complete improved source code, or null if a safe improvement cannot be made",
-  "generated_tests": "complete test module or test examples appropriate to the supplied language, or null if meaningful tests cannot be generated"
+  "generated_tests": (
+      "complete test module or test examples appropriate to the supplied language, "
+      "or null if meaningful tests cannot be generated"
+  )
 }
 Use line numbers where reasonably clear; otherwise use null.
 Do not reproduce secrets or credentials. Keep findings actionable and avoid speculative claims.
 """
+
 
 def _json_from_text(content: str) -> dict[str, Any]:
     text = content.strip()
@@ -37,12 +41,15 @@ def _json_from_text(content: str) -> dict[str, Any]:
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
         raise ValueError("AI provider did not return a JSON object.")
-    data = json.loads(text[start:end + 1])
+    data = json.loads(text[start : end + 1])
     if not isinstance(data, dict):
         raise ValueError("AI response must be a JSON object.")
     return data
 
-async def _openai_compatible_review(provider: str, filename: str, code: str, language: str = "python") -> dict:
+
+async def _openai_compatible_review(
+    provider: str, filename: str, code: str, language: str = "python"
+) -> dict:
     # Import lazily so static-analysis-only mode and provider-selection tests
     # do not require the OpenAI SDK to be imported at application startup.
     from openai import AsyncOpenAI
@@ -64,7 +71,13 @@ async def _openai_compatible_review(provider: str, filename: str, code: str, lan
             model=model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Review this {language} source file: {filename}\n\n<source>\n{code}\n</source>"},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Review this {language} source file: {filename}\n\n"
+                        f"<source>\n{code}\n</source>"
+                    ),
+                },
             ],
             temperature=0.1,
         )
@@ -73,13 +86,17 @@ async def _openai_compatible_review(provider: str, filename: str, code: str, lan
     finally:
         await client.close()
 
+
 async def _gemini_review(filename: str, code: str, language: str = "python") -> dict:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not configured.")
     model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    prompt = f"{SYSTEM_PROMPT}\n\nReview this {language} source file: {filename}\n\n<source>\n{code}\n</source>"
+    prompt = (
+        f"{SYSTEM_PROMPT}\n\nReview this {language} source file: {filename}\n\n"
+        f"<source>\n{code}\n</source>"
+    )
     async with httpx.AsyncClient(timeout=90) as client:
         response = await client.post(
             url,
@@ -95,13 +112,21 @@ async def _gemini_review(filename: str, code: str, language: str = "python") -> 
     content = "\n".join(part.get("text", "") for part in parts)
     return _json_from_text(content)
 
+
 def configured_provider_order(requested: str) -> list[str]:
     if requested != "auto":
         return [requested]
     configured = os.getenv("AI_FALLBACK_ORDER", "openai,gemini,ollama")
-    return [p.strip().lower() for p in configured.split(",") if p.strip() in {"openai", "gemini", "ollama"}]
+    return [
+        p.strip().lower()
+        for p in configured.split(",")
+        if p.strip() in {"openai", "gemini", "ollama"}
+    ]
 
-async def get_hybrid_review(filename: str, code: str, requested: str = "auto", language: str = "python") -> tuple[dict | None, str | None, list[str]]:
+
+async def get_hybrid_review(
+    filename: str, code: str, requested: str = "auto", language: str = "python"
+) -> tuple[dict | None, str | None, list[str]]:
     errors = []
     for provider in configured_provider_order(requested):
         try:
@@ -114,5 +139,7 @@ async def get_hybrid_review(filename: str, code: str, requested: str = "auto", l
             return result, provider, errors
         except Exception as exc:
             # Keep errors useful but do not expose provider credentials or request payloads.
-            errors.append(f"{provider}: {type(exc).__name__}; provider unavailable or response invalid.")
+            errors.append(
+                f"{provider}: {type(exc).__name__}; provider unavailable or response invalid."
+            )
     return None, None, errors
