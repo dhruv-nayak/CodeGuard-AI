@@ -59,8 +59,8 @@ jobs:
       - name: Generate installed-environment CycloneDX SBOM
         if: always() && steps.python-check.outputs.available == 'true'
         run: |
-          cyclonedx-py environment \
-            --pyvenv .venv \
+          .venv/bin/python -m pip install --upgrade cyclonedx-bom
+          .venv/bin/python -m cyclonedx_py environment \
             --output-format JSON \
             --output-file sbom-python.cdx.json
 
