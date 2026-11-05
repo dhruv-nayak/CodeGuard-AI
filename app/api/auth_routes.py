@@ -24,10 +24,11 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     environment = os.getenv("ENVIRONMENT", "development").strip().lower()
     default_registration = "false" if environment == "production" else "true"
-    allow_registration = (
-        os.getenv("ALLOW_REGISTRATION", default_registration).strip().lower()
-        in {"true", "1", "yes"}
-    )
+    allow_registration = os.getenv("ALLOW_REGISTRATION", default_registration).strip().lower() in {
+        "true",
+        "1",
+        "yes",
+    }
 
     if not allow_registration:
         raise HTTPException(

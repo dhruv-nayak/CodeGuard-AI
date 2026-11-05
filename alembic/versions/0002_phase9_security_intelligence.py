@@ -11,7 +11,6 @@ branch_labels = None
 depends_on = None
 
 
-
 def upgrade():
     import traceback
 
@@ -45,7 +44,9 @@ def upgrade():
                 sa.Column("note", sa.Text(), nullable=False, server_default=""),
                 sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
                 sa.UniqueConstraint(
-                    "user_id", "review_id", "fingerprint",
+                    "user_id",
+                    "review_id",
+                    "fingerprint",
                     name="uq_finding_remediation",
                 ),
             )

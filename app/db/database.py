@@ -26,7 +26,6 @@ def get_db():
         db.close()
 
 
-
 def init_db():
     import logging
     import traceback

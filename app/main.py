@@ -24,29 +24,44 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import logging
+    import sys
+    import traceback
 
     logger = logging.getLogger("codeguard.startup")
+    stage = "initialization"
 
     try:
-        logger.info("Validating runtime configuration")
+        stage = "runtime configuration validation"
+        print(f"[STARTUP] BEGIN: {stage}", flush=True)
         validate_runtime_config()
+        print(f"[STARTUP] SUCCESS: {stage}", flush=True)
 
-        logger.info("Starting database migrations")
+        stage = "database migrations"
+        print(f"[STARTUP] BEGIN: {stage}", flush=True)
         init_db()
+        print(f"[STARTUP] SUCCESS: {stage}", flush=True)
 
-        logger.info("Database migrations completed successfully")
-
+        stage = "administrator seeding"
+        print(f"[STARTUP] BEGIN: {stage}", flush=True)
         with SessionLocal() as db:
-            logger.info("Seeding administrator")
             seed_admin(db)
+        print(f"[STARTUP] SUCCESS: {stage}", flush=True)
 
-        logger.info("Application startup completed")
+        print("[STARTUP] APPLICATION STARTUP COMPLETED", flush=True)
 
-    except Exception:
-        logger.exception("APPLICATION STARTUP FAILED")
+    except Exception as exc:
+        print(f"[STARTUP] FAILED at stage: {stage}", file=sys.stderr, flush=True)
+        print(
+            f"[STARTUP] Exception: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+        traceback.print_exc(file=sys.stderr)
+        logger.exception("APPLICATION STARTUP FAILED at stage: %s", stage)
         raise
 
     yield
+
 
 app = FastAPI(
     title="CodeGuard AI",

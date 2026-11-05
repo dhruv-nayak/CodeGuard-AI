@@ -30,9 +30,6 @@ def test_health_endpoint():
     assert response.json()["status"] == "ok"
 
 
-
-
-
 def test_registration_can_be_disabled(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("ALLOW_REGISTRATION", "false")
