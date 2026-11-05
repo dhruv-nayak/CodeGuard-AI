@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,19 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+    default_registration = "false" if environment == "production" else "true"
+    allow_registration = (
+        os.getenv("ALLOW_REGISTRATION", default_registration).strip().lower()
+        in {"true", "1", "yes"}
+    )
+
+    if not allow_registration:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registration is currently disabled. Contact your administrator.",
+        )
+
     try:
         user = register_user(db, payload.email, payload.full_name, payload.password)
     except ValueError as exc:

@@ -30,6 +30,28 @@ def test_health_endpoint():
     assert response.json()["status"] == "ok"
 
 
+
+
+
+def test_registration_can_be_disabled(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("ALLOW_REGISTRATION", "false")
+
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"blocked-{uuid4().hex}@example.com",
+            "full_name": "Blocked User",
+            "password": "A-strong-test-password-123",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Registration is currently disabled. Contact your administrator."
+    )
+
+
 def test_reviews_require_authentication():
     response = client.post(
         "/api/v1/reviews", json={"filename": "sample.py", "language": "python", "code": "x = 1"}
