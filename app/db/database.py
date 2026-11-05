@@ -32,8 +32,9 @@ def init_db():
     import traceback
     from pathlib import Path
 
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     logger = logging.getLogger("codeguard.database")
 
