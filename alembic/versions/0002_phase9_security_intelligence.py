@@ -11,55 +11,102 @@ branch_labels = None
 depends_on = None
 
 
+
 def upgrade():
-    bind = op.get_bind()
-    inspector = inspect(bind)
-    tables = set(inspector.get_table_names())
-    if "finding_remediations" not in tables:
-        op.create_table(
-            "finding_remediations",
-            sa.Column("id", sa.Integer(), primary_key=True),
-            sa.Column(
-                "user_id",
-                sa.Integer(),
-                sa.ForeignKey("users.id", ondelete="CASCADE"),
-                nullable=False,
-            ),
-            sa.Column("review_id", sa.String(64), nullable=False),
-            sa.Column("fingerprint", sa.String(64), nullable=False),
-            sa.Column("status", sa.String(24), nullable=False, server_default="open"),
-            sa.Column("note", sa.Text(), nullable=False, server_default=""),
-            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-            sa.UniqueConstraint(
-                "user_id", "review_id", "fingerprint", name="uq_finding_remediation"
-            ),
-        )
-        op.create_index("ix_finding_remediations_user_id", "finding_remediations", ["user_id"])
-        op.create_index("ix_finding_remediations_review_id", "finding_remediations", ["review_id"])
-    if "repository_schedules" not in tables:
-        op.create_table(
-            "repository_schedules",
-            sa.Column("id", sa.Integer(), primary_key=True),
-            sa.Column(
-                "user_id",
-                sa.Integer(),
-                sa.ForeignKey("users.id", ondelete="CASCADE"),
-                nullable=False,
-            ),
-            sa.Column(
-                "repository_id",
-                sa.Integer(),
-                sa.ForeignKey("repositories.id", ondelete="CASCADE"),
-                nullable=False,
-            ),
-            sa.Column("cadence", sa.String(16), nullable=False, server_default="weekly"),
-            sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        )
-        op.create_index("ix_repository_schedules_user_id", "repository_schedules", ["user_id"])
-        op.create_index(
-            "ix_repository_schedules_repository_id", "repository_schedules", ["repository_id"]
-        )
+    import traceback
+
+    def log(message):
+        print(f"[MIGRATION 0002] {message}", flush=True)
+
+    try:
+        log("Starting migration")
+
+        bind = op.get_bind()
+        inspector = inspect(bind)
+        tables = set(inspector.get_table_names())
+
+        log(f"Existing tables: {sorted(tables)}")
+
+        if "finding_remediations" not in tables:
+            log("Creating finding_remediations")
+
+            op.create_table(
+                "finding_remediations",
+                sa.Column("id", sa.Integer(), primary_key=True),
+                sa.Column(
+                    "user_id",
+                    sa.Integer(),
+                    sa.ForeignKey("users.id", ondelete="CASCADE"),
+                    nullable=False,
+                ),
+                sa.Column("review_id", sa.String(64), nullable=False),
+                sa.Column("fingerprint", sa.String(64), nullable=False),
+                sa.Column("status", sa.String(24), nullable=False, server_default="open"),
+                sa.Column("note", sa.Text(), nullable=False, server_default=""),
+                sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+                sa.UniqueConstraint(
+                    "user_id", "review_id", "fingerprint",
+                    name="uq_finding_remediation",
+                ),
+            )
+
+            log("Creating finding_remediations indexes")
+            op.create_index(
+                "ix_finding_remediations_user_id",
+                "finding_remediations",
+                ["user_id"],
+            )
+            op.create_index(
+                "ix_finding_remediations_review_id",
+                "finding_remediations",
+                ["review_id"],
+            )
+
+            log("finding_remediations completed")
+
+        if "repository_schedules" not in tables:
+            log("Creating repository_schedules")
+
+            op.create_table(
+                "repository_schedules",
+                sa.Column("id", sa.Integer(), primary_key=True),
+                sa.Column(
+                    "user_id",
+                    sa.Integer(),
+                    sa.ForeignKey("users.id", ondelete="CASCADE"),
+                    nullable=False,
+                ),
+                sa.Column(
+                    "repository_id",
+                    sa.Integer(),
+                    sa.ForeignKey("repositories.id", ondelete="CASCADE"),
+                    nullable=False,
+                ),
+                sa.Column("cadence", sa.String(16), nullable=False, server_default="weekly"),
+                sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
+                sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            )
+
+            log("Creating repository_schedules indexes")
+            op.create_index(
+                "ix_repository_schedules_user_id",
+                "repository_schedules",
+                ["user_id"],
+            )
+            op.create_index(
+                "ix_repository_schedules_repository_id",
+                "repository_schedules",
+                ["repository_id"],
+            )
+
+            log("repository_schedules completed")
+
+        log("Migration operations completed")
+
+    except Exception:
+        print("[MIGRATION 0002] FAILED", flush=True)
+        traceback.print_exc()
+        raise
 
 
 def downgrade():
