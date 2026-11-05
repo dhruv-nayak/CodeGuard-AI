@@ -26,12 +26,29 @@ def get_db():
         db.close()
 
 
+
 def init_db():
+    import logging
+    import traceback
     from pathlib import Path
 
+    from alembic import command
     from alembic.config import Config
 
-    from alembic import command
+    logger = logging.getLogger("codeguard.database")
 
-    config = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
-    command.upgrade(config, "head")
+    try:
+        config_path = Path(__file__).resolve().parents[2] / "alembic.ini"
+        logger.info("Alembic config path: %s", config_path)
+        logger.info("Starting Alembic database upgrade to head")
+
+        config = Config(str(config_path))
+
+        command.upgrade(config, "head")
+
+        logger.info("Alembic database upgrade completed successfully")
+
+    except Exception:
+        logger.exception("ALEMBIC MIGRATION FAILED")
+        traceback.print_exc()
+        raise
