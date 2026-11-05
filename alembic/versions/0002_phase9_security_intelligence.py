@@ -5,7 +5,7 @@ from sqlalchemy import inspect
 
 from alembic import op
 
-revision = "0002_phase9_security_intelligence"
+revision = "0002_phase9_intel"
 down_revision = "0001_phase6_security"
 branch_labels = None
 depends_on = None
