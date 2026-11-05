@@ -23,12 +23,30 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    validate_runtime_config()
-    init_db()
-    with SessionLocal() as db:
-        seed_admin(db)
-    yield
+    import logging
 
+    logger = logging.getLogger("codeguard.startup")
+
+    try:
+        logger.info("Validating runtime configuration")
+        validate_runtime_config()
+
+        logger.info("Starting database migrations")
+        init_db()
+
+        logger.info("Database migrations completed successfully")
+
+        with SessionLocal() as db:
+            logger.info("Seeding administrator")
+            seed_admin(db)
+
+        logger.info("Application startup completed")
+
+    except Exception:
+        logger.exception("APPLICATION STARTUP FAILED")
+        raise
+
+    yield
 
 app = FastAPI(
     title="CodeGuard AI",
