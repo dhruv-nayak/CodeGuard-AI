@@ -25,7 +25,7 @@ function setAuthenticated(data) {
 }
 async function authRequest(path, payload) {
   const response = await fetch(`${API_BASE}/auth/${path}`, {
-    method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload)
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.detail || "Authentication failed.");
@@ -53,7 +53,7 @@ async function register() {
 async function logout() {
   const token = sessionStorage.getItem("codeguard_access_token");
   if (token) {
-    try { await fetch(`${API_BASE}/auth/logout`, {method: "POST", headers: authHeaders()}); }
+    try { await fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: authHeaders() }); }
     catch (_) { /* Local sign-out must still work if the API is offline. */ }
   }
   sessionStorage.removeItem("codeguard_access_token");
@@ -71,7 +71,7 @@ async function logout() {
 }
 async function loadHistory() {
   if (!sessionStorage.getItem("codeguard_access_token")) return;
-  const response = await fetch(`${API_BASE}/reviews/history`, {headers: authHeaders()});
+  const response = await fetch(`${API_BASE}/reviews/history`, { headers: authHeaders() });
   if (response.status === 401) { logout(); showAuthMessage("Session expired. Please sign in again."); return; }
   const rows = await response.json();
   const list = document.getElementById("historyList");
@@ -105,7 +105,7 @@ async function addRepository() {
   if (!payload.owner || !payload.name) { showAuthMessage("Enter a GitHub owner and repository name."); return; }
   const response = await fetch(`${API_BASE}/repositories`, {
     method: "POST",
-    headers: {"Content-Type":"application/json", ...authHeaders()},
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(payload)
   });
   const data = await response.json();
@@ -117,7 +117,7 @@ async function addRepository() {
 }
 async function loadRepositories() {
   if (!sessionStorage.getItem("codeguard_access_token")) return;
-  const response = await fetch(`${API_BASE}/repositories`, {headers: authHeaders()});
+  const response = await fetch(`${API_BASE}/repositories`, { headers: authHeaders() });
   if (!response.ok) return;
   const rows = await response.json();
   const list = document.getElementById("repositoryList"); list.replaceChildren();
@@ -131,12 +131,12 @@ async function loadRepositories() {
     detail.append(link, branch);
     const remove = document.createElement("button"); remove.className = "secondary-btn"; remove.textContent = "Remove";
     remove.onclick = async () => {
-      const deleted = await fetch(`${API_BASE}/repositories/${repo.id}`, {method:"DELETE", headers:authHeaders()});
+      const deleted = await fetch(`${API_BASE}/repositories/${repo.id}`, { method: "DELETE", headers: authHeaders() });
       if (deleted.ok) loadRepositories();
     };
     item.append(detail, remove); list.append(item);
   });
-  const sharedResponse = await fetch(`${API_BASE}/repositories/shared`, {headers:authHeaders()});
+  const sharedResponse = await fetch(`${API_BASE}/repositories/shared`, { headers: authHeaders() });
   const sharedList = document.getElementById("sharedRepositoryList"); sharedList.replaceChildren();
   if (sharedResponse.ok) {
     const shared = await sharedResponse.json();
@@ -150,17 +150,21 @@ async function loadRepositories() {
   }
 }
 async function downloadTests(reviewId) {
-  const response = await fetch(`${API_BASE}/reviews/history/${encodeURIComponent(reviewId)}/tests`, {headers:authHeaders()});
-  if (!response.ok) { showAuthMessage("No generated test file is available for this review."); return; }
+  const response = await fetch(`${API_BASE}/reviews/history/${encodeURIComponent(reviewId)}/tests`, { headers: authHeaders() });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    showAuthMessage(error.detail || `Download failed (${response.status}).`);
+    return;
+  }
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a"); anchor.href = url;
-  anchor.download = `codeguard_${reviewId.slice(0,8)}_tests.py`;
+  anchor.download = `codeguard_${reviewId.slice(0, 8)}_tests.py`;
   document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
 }
 
 async function viewHistoryItem(reviewId) {
-  const response = await fetch(`${API_BASE}/reviews/history/${encodeURIComponent(reviewId)}`, {headers: authHeaders()});
+  const response = await fetch(`${API_BASE}/reviews/history/${encodeURIComponent(reviewId)}`, { headers: authHeaders() });
   const data = await response.json();
   if (!response.ok) { showAuthMessage(data.detail || "Could not load review."); return; }
   const summary = data.summary || data.ai_summary || "Review details loaded.";
@@ -196,8 +200,8 @@ async function runReview() {
   try {
     const response = await fetch("/api/v1/reviews", {
       method: "POST",
-      headers: {"Content-Type": "application/json", ...authHeaders()},
-      body: JSON.stringify({filename, language: document.getElementById("language").value, code, ai_provider: document.getElementById("provider").value})
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ filename, language: document.getElementById("language").value, code, ai_provider: document.getElementById("provider").value })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Review failed");
@@ -288,7 +292,7 @@ async function reviewPullRequest() {
   try {
     const response = await fetch("/api/v1/github/pull-requests/review", {
       method: "POST",
-      headers: {"Content-Type": "application/json", ...authHeaders()},
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(payload)
     });
     const data = await response.json();
@@ -349,14 +353,14 @@ async function reviewPullRequest() {
 async function previewGitHubComments() {
   const reviewId = window.lastGitHubReviewId;
   if (!reviewId) return;
-  const response = await fetch(`/api/v1/github/reviews/${encodeURIComponent(reviewId)}/comment-draft`, {headers:authHeaders()});
+  const response = await fetch(`/api/v1/github/reviews/${encodeURIComponent(reviewId)}/comment-draft`, { headers: authHeaders() });
   const data = await response.json();
   if (!response.ok) { document.getElementById("ghStatus").textContent = data.detail || "Could not build comment drafts."; return; }
   const container = document.getElementById("ghCommentDraft"); container.replaceChildren();
   if (!data.comments.length) { container.textContent = "No line-specific comments can be drafted for this review."; return; }
   data.comments.forEach((comment, index) => {
     const card = document.createElement("div"); card.className = "comment-draft";
-    const title = document.createElement("strong"); title.textContent = `${index+1}. ${comment.path} · line ${comment.line}`;
+    const title = document.createElement("strong"); title.textContent = `${index + 1}. ${comment.path} · line ${comment.line}`;
     const body = document.createElement("p"); body.textContent = comment.body;
     card.append(title, body); container.append(card);
   });
@@ -379,8 +383,8 @@ async function publishGitHubComments() {
   const button = document.getElementById("ghPublishBtn"); button.disabled = true;
   try {
     const response = await fetch(`/api/v1/github/reviews/${encodeURIComponent(reviewId)}/publish-comments`, {
-      method:"POST", headers:{"Content-Type":"application/json", ...authHeaders()},
-      body:JSON.stringify({github_token:githubToken, installation_id:installationId, confirmation})
+      method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ github_token: githubToken, installation_id: installationId, confirmation })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Comment publishing failed.");
@@ -397,9 +401,9 @@ async function loadAdminWorkspace() {
   if (!currentUser || currentUser.role !== "admin") return;
   const panel = document.getElementById("adminPanel"); panel.hidden = false;
   const [usersResponse, teamsResponse, auditResponse] = await Promise.all([
-    fetch(`${API_BASE}/admin/users`, {headers:authHeaders()}),
-    fetch(`${API_BASE}/admin/teams`, {headers:authHeaders()}),
-    fetch(`${API_BASE}/admin/audit-logs?limit=25`, {headers:authHeaders()})
+    fetch(`${API_BASE}/admin/users`, { headers: authHeaders() }),
+    fetch(`${API_BASE}/admin/teams`, { headers: authHeaders() }),
+    fetch(`${API_BASE}/admin/audit-logs?limit=25`, { headers: authHeaders() })
   ]);
   if (usersResponse.ok) {
     const users = await usersResponse.json(); const target = document.getElementById("adminUsers"); target.replaceChildren();
@@ -433,8 +437,8 @@ async function loadAdminWorkspace() {
   }
 }
 async function createTeam() {
-  const payload = {name:document.getElementById("newTeamName").value.trim(), description:document.getElementById("newTeamDescription").value.trim()};
-  const response = await fetch(`${API_BASE}/admin/teams`, {method:"POST", headers:{"Content-Type":"application/json", ...authHeaders()}, body:JSON.stringify(payload)});
+  const payload = { name: document.getElementById("newTeamName").value.trim(), description: document.getElementById("newTeamDescription").value.trim() };
+  const response = await fetch(`${API_BASE}/admin/teams`, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify(payload) });
   const data = await response.json();
   if (!response.ok) { showAuthMessage(data.detail || "Could not create team."); return; }
   document.getElementById("newTeamName").value = "";
@@ -445,7 +449,7 @@ async function createTeam() {
 async function addTeamMember() {
   const teamId = Number(document.getElementById("teamIdInput").value);
   const email = document.getElementById("teamMemberEmail").value.trim();
-  const response = await fetch(`${API_BASE}/admin/teams/${teamId}/members`, {method:"POST", headers:{"Content-Type":"application/json", ...authHeaders()}, body:JSON.stringify({email})});
+  const response = await fetch(`${API_BASE}/admin/teams/${teamId}/members`, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ email }) });
   const data = await response.json();
   if (!response.ok) { showAuthMessage(data.detail || "Could not add member."); return; }
   showAuthMessage(`${email} added to ${data.name}.`);
@@ -456,8 +460,8 @@ async function shareRepository() {
   const teamId = Number(document.getElementById("shareTeamId").value);
   const repositoryId = Number(document.getElementById("shareRepositoryId").value);
   const response = await fetch(`${API_BASE}/admin/teams/${teamId}/repositories`, {
-    method:"POST", headers:{"Content-Type":"application/json", ...authHeaders()},
-    body:JSON.stringify({repository_id:repositoryId})
+    method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ repository_id: repositoryId })
   });
   const data = await response.json();
   if (!response.ok) { showAuthMessage(data.detail || "Could not share repository."); return; }
@@ -465,7 +469,7 @@ async function shareRepository() {
   loadAdminWorkspace(); loadRepositories();
 }
 async function updateUserRole(userId, role) {
-  const response = await fetch(`${API_BASE}/admin/users/${userId}/role?role=${encodeURIComponent(role)}`, {method:"PATCH", headers:authHeaders()});
+  const response = await fetch(`${API_BASE}/admin/users/${userId}/role?role=${encodeURIComponent(role)}`, { method: "PATCH", headers: authHeaders() });
   const data = await response.json();
   if (!response.ok) { showAuthMessage(data.detail || "Could not update role."); return; }
   showAuthMessage(`Updated ${data.email} to ${data.role}.`);
@@ -476,7 +480,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const token = sessionStorage.getItem("codeguard_access_token");
   if (!token) return;
   try {
-    const response = await fetch(`${API_BASE}/auth/me`, {headers: authHeaders()});
+    const response = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
     if (!response.ok) { logout(); return; }
     const user = await response.json();
     currentUser = user;
@@ -496,7 +500,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function updateFilenameHint() {
   const language = document.getElementById("language").value;
-  const ext = {python:"py", javascript:"js", typescript:"ts", java:"java", php:"php", sql:"sql", html:"html"}[language];
+  const ext = { python: "py", javascript: "js", typescript: "ts", java: "java", php: "php", sql: "sql", html: "html" }[language];
   const field = document.getElementById("filename");
   if (!field.value || /\.(py|js|ts|java|php|sql|html)$/i.test(field.value)) field.value = `submitted.${ext}`;
 }
@@ -506,17 +510,17 @@ async function loadAnalytics() {
   const summary = document.getElementById("analyticsSummary");
   const details = document.getElementById("analyticsDetails");
   try {
-    const response = await fetch(`${API_BASE}/analytics/overview`, {headers: authHeaders()});
+    const response = await fetch(`${API_BASE}/analytics/overview`, { headers: authHeaders() });
     if (!response.ok) return;
     const data = await response.json();
     summary.textContent = `${data.total_reviews} saved review(s) · Average score: ${data.average_score ?? "—"}/100`;
     details.replaceChildren();
     const cards = [
-      ["Languages", Object.entries(data.language_distribution).map(([k,v])=>`${k}: ${v}`).join(" · ") || "No data"],
-      ["Findings", Object.entries(data.severity_distribution).map(([k,v])=>`${k}: ${v}`).join(" · ")],
-      ["Most frequent rules", (data.top_rules || []).slice(0,5).map(x=>`${x.rule_id} (${x.count})`).join(" · ") || "No findings yet"]
+      ["Languages", Object.entries(data.language_distribution).map(([k, v]) => `${k}: ${v}`).join(" · ") || "No data"],
+      ["Findings", Object.entries(data.severity_distribution).map(([k, v]) => `${k}: ${v}`).join(" · ")],
+      ["Most frequent rules", (data.top_rules || []).slice(0, 5).map(x => `${x.rule_id} (${x.count})`).join(" · ") || "No findings yet"]
     ];
-    cards.forEach(([heading, value]) => { const card=document.createElement("div"); card.className="analytics-card"; const h=document.createElement("strong"); h.textContent=heading; const p=document.createElement("p"); p.textContent=value; card.append(h,p); details.append(card); });
+    cards.forEach(([heading, value]) => { const card = document.createElement("div"); card.className = "analytics-card"; const h = document.createElement("strong"); h.textContent = heading; const p = document.createElement("p"); p.textContent = value; card.append(h, p); details.append(card); });
   } catch (_) { summary.textContent = "Analytics are temporarily unavailable."; }
 }
 
@@ -539,8 +543,8 @@ async function scanRepository() {
   results.hidden = true; results.replaceChildren();
   try {
     const response = await fetch(`${API_BASE}/github/repositories/scan`, {
-      method: "POST", headers: {"Content-Type":"application/json", ...authHeaders()},
-      body: JSON.stringify({owner, repo, github_token, installation_id})
+      method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ owner, repo, github_token, installation_id })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Repository scan failed.");
@@ -569,7 +573,7 @@ async function scanRepository() {
       item.append(title, detail); results.append(item);
     });
     const limits = document.createElement("details"); const summaryEl = document.createElement("summary"); summaryEl.textContent = "Scan limitations";
-    const list = document.createElement("ul"); (data.limitations || []).forEach(t => { const li=document.createElement("li"); li.textContent=t; list.append(li); });
+    const list = document.createElement("ul"); (data.limitations || []).forEach(t => { const li = document.createElement("li"); li.textContent = t; list.append(li); });
     limits.append(summaryEl, list); results.append(limits); results.hidden = false;
     document.getElementById("scanToken").value = "";
     loadHistory();
@@ -578,7 +582,7 @@ async function scanRepository() {
 }
 
 async function downloadSbom(reviewId) {
-  const response = await fetch(`${API_BASE}/reviews/history/${encodeURIComponent(reviewId)}/sbom`, {headers:authHeaders()});
+  const response = await fetch(`${API_BASE}/reviews/history/${encodeURIComponent(reviewId)}/sbom`, { headers: authHeaders() });
   if (!response.ok) { showAuthMessage("Could not download this repository SBOM."); return; }
   const blob = await response.blob(); const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = "codeguard-sbom.cdx.json";
@@ -589,62 +593,62 @@ async function downloadSbom(reviewId) {
 async function loadSecurityIntelligence() {
   if (!sessionStorage.getItem("codeguard_access_token")) return;
   const [dashboard, remediations, alerts, schedules] = await Promise.all([
-    fetch(`${API_BASE}/security/dashboard`, {headers:authHeaders()}),
-    fetch(`${API_BASE}/security/remediations`, {headers:authHeaders()}),
-    fetch(`${API_BASE}/security/alerts`, {headers:authHeaders()}),
-    fetch(`${API_BASE}/security/schedules`, {headers:authHeaders()})
+    fetch(`${API_BASE}/security/dashboard`, { headers: authHeaders() }),
+    fetch(`${API_BASE}/security/remediations`, { headers: authHeaders() }),
+    fetch(`${API_BASE}/security/alerts`, { headers: authHeaders() }),
+    fetch(`${API_BASE}/security/schedules`, { headers: authHeaders() })
   ]);
   if (!dashboard.ok) return;
   const data = await dashboard.json();
   document.getElementById("securitySummary").textContent = `${data.scans} repository scans across ${data.repositories} repositories · Risk score ${data.risk_score}/100 · ${data.scope}`;
   const metrics = document.getElementById("securityMetrics"); metrics.replaceChildren();
-  [["Risk score",data.risk_score], ["Scans",data.scans], ["Repositories",data.repositories], ["Average quality",data.average_quality_score ?? "—"]].forEach(([label,value]) => {
-    const card=document.createElement("div"); card.className="analytics-card";
-    const strong=document.createElement("strong"); strong.textContent=value;
-    const small=document.createElement("span"); small.textContent=label; card.append(strong,small); metrics.append(card);
+  [["Risk score", data.risk_score], ["Scans", data.scans], ["Repositories", data.repositories], ["Average quality", data.average_quality_score ?? "—"]].forEach(([label, value]) => {
+    const card = document.createElement("div"); card.className = "analytics-card";
+    const strong = document.createElement("strong"); strong.textContent = value;
+    const small = document.createElement("span"); small.textContent = label; card.append(strong, small); metrics.append(card);
   });
-  const remList=document.getElementById("remediationList"); remList.replaceChildren();
+  const remList = document.getElementById("remediationList"); remList.replaceChildren();
   if (remediations.ok) {
-    const items=await remediations.json();
-    if (!items.length) remList.textContent="No repository findings are available yet.";
-    items.slice(0,40).forEach(item=>{
-      const card=document.createElement("div"); card.className="history-item";
-      const info=document.createElement("div");
-      const title=document.createElement("strong"); title.textContent=`${item.finding.severity || "info"} · ${item.finding.title || item.finding.rule_id || "Finding"}`;
-      const detail=document.createElement("p"); detail.textContent=`${item.repository} · ${item.finding.file || ""} · ${item.finding.rule_id || ""}`;
-      info.append(title,detail);
-      const select=document.createElement("select");
-      ["open","in_progress","resolved","accepted_risk","false_positive"].forEach(status=>{const option=document.createElement("option");option.value=status;option.textContent=status.replaceAll("_"," ");option.selected=item.status===status;select.append(option);});
-      select.onchange=async()=>{await fetch(`${API_BASE}/security/remediations/${encodeURIComponent(item.review_id)}/${item.fingerprint}`,{method:"PATCH",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({status:select.value,note:item.note || ""})});};
-      card.append(info,select); remList.append(card);
+    const items = await remediations.json();
+    if (!items.length) remList.textContent = "No repository findings are available yet.";
+    items.slice(0, 40).forEach(item => {
+      const card = document.createElement("div"); card.className = "history-item";
+      const info = document.createElement("div");
+      const title = document.createElement("strong"); title.textContent = `${item.finding.severity || "info"} · ${item.finding.title || item.finding.rule_id || "Finding"}`;
+      const detail = document.createElement("p"); detail.textContent = `${item.repository} · ${item.finding.file || ""} · ${item.finding.rule_id || ""}`;
+      info.append(title, detail);
+      const select = document.createElement("select");
+      ["open", "in_progress", "resolved", "accepted_risk", "false_positive"].forEach(status => { const option = document.createElement("option"); option.value = status; option.textContent = status.replaceAll("_", " "); option.selected = item.status === status; select.append(option); });
+      select.onchange = async () => { await fetch(`${API_BASE}/security/remediations/${encodeURIComponent(item.review_id)}/${item.fingerprint}`, { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ status: select.value, note: item.note || "" }) }); };
+      card.append(info, select); remList.append(card);
     });
   }
-  const alertList=document.getElementById("securityAlerts"); alertList.replaceChildren();
-  if (alerts.ok) { const a=await alerts.json(); if(!a.alerts.length) alertList.textContent="No critical/high findings in recent saved scans."; a.alerts.slice(0,20).forEach(item=>{const row=document.createElement("div");row.className="history-item";row.textContent=`${item.severity.toUpperCase()} · ${item.repository} · ${item.title} · ${item.file || ""}`;alertList.append(row);}); }
-  const scheduleList=document.getElementById("securitySchedules"); scheduleList.replaceChildren();
-  if (schedules.ok) { const values=await schedules.json(); if(!values.length) scheduleList.textContent="No scan schedules configured."; values.forEach(item=>{const row=document.createElement("div");row.className="history-item";row.textContent=`Schedule #${item.id} · repository ID ${item.repository_id} · ${item.cadence} · external runner required`;scheduleList.append(row);}); }
+  const alertList = document.getElementById("securityAlerts"); alertList.replaceChildren();
+  if (alerts.ok) { const a = await alerts.json(); if (!a.alerts.length) alertList.textContent = "No critical/high findings in recent saved scans."; a.alerts.slice(0, 20).forEach(item => { const row = document.createElement("div"); row.className = "history-item"; row.textContent = `${item.severity.toUpperCase()} · ${item.repository} · ${item.title} · ${item.file || ""}`; alertList.append(row); }); }
+  const scheduleList = document.getElementById("securitySchedules"); scheduleList.replaceChildren();
+  if (schedules.ok) { const values = await schedules.json(); if (!values.length) scheduleList.textContent = "No scan schedules configured."; values.forEach(item => { const row = document.createElement("div"); row.className = "history-item"; row.textContent = `Schedule #${item.id} · repository ID ${item.repository_id} · ${item.cadence} · external runner required`; scheduleList.append(row); }); }
 }
 
 async function downloadSecurityReport(format) {
-  const response=await fetch(`${API_BASE}/security/reports/export?format=${encodeURIComponent(format)}`,{headers:authHeaders()});
-  if(!response.ok){showAuthMessage("Could not export the security report.");return;}
-  const blob=await response.blob(); const url=URL.createObjectURL(blob); const a=document.createElement("a");a.href=url;a.download=`codeguard-security-report.${format}`;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
+  const response = await fetch(`${API_BASE}/security/reports/export?format=${encodeURIComponent(format)}`, { headers: authHeaders() });
+  if (!response.ok) { showAuthMessage("Could not export the security report."); return; }
+  const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `codeguard-security-report.${format}`; document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 }
 
 async function createSecuritySchedule() {
-  const repository_id=Number(document.getElementById("scheduleRepositoryId").value);
-  const cadence=document.getElementById("scheduleCadence").value;
-  const response=await fetch(`${API_BASE}/security/schedules`,{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({repository_id,cadence})});
-  const data=await response.json(); if(!response.ok){showAuthMessage(data.detail || "Could not save schedule.");return;}
+  const repository_id = Number(document.getElementById("scheduleRepositoryId").value);
+  const cadence = document.getElementById("scheduleCadence").value;
+  const response = await fetch(`${API_BASE}/security/schedules`, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ repository_id, cadence }) });
+  const data = await response.json(); if (!response.ok) { showAuthMessage(data.detail || "Could not save schedule."); return; }
   showAuthMessage(data.execution); loadSecurityIntelligence();
 }
 
 
 async function loadTeamSecurityDashboard() {
-  const teamId=Number(document.getElementById("securityTeamId").value);
-  if(!teamId){showAuthMessage("Enter a team ID.");return;}
-  const response=await fetch(`${API_BASE}/security/teams/${teamId}/dashboard`,{headers:authHeaders()});
-  const data=await response.json(); const target=document.getElementById("teamSecuritySummary"); target.replaceChildren();
-  if(!response.ok){target.textContent=data.detail || "Could not load team dashboard.";return;}
-  target.textContent=`Team ${teamId}: ${data.scans} scans · ${data.repositories} repositories · risk score ${data.risk_score}/100 · ${data.scope}`;
+  const teamId = Number(document.getElementById("securityTeamId").value);
+  if (!teamId) { showAuthMessage("Enter a team ID."); return; }
+  const response = await fetch(`${API_BASE}/security/teams/${teamId}/dashboard`, { headers: authHeaders() });
+  const data = await response.json(); const target = document.getElementById("teamSecuritySummary"); target.replaceChildren();
+  if (!response.ok) { target.textContent = data.detail || "Could not load team dashboard."; return; }
+  target.textContent = `Team ${teamId}: ${data.scans} scans · ${data.repositories} repositories · risk score ${data.risk_score}/100 · ${data.scope}`;
 }
